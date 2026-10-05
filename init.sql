@@ -1,10 +1,10 @@
 CREATE DATABASE IF NOT EXISTS biotrace;
 USE biotrace;
 
-CREATE USER 'adiministradorbiotrace'@'localhost' IDENTIFIED BY 'bio123';
+CREATE USER 'webdataviz'@'localhost' IDENTIFIED BY 'web123';
 
 
-GRANT SELECT, INSERT, DELETE, UPDATE ON nome_do_banco.* TO 'nome_usuario'@'localhost';
+GRANT SELECT, INSERT, DELETE, UPDATE ON biotrace.* TO 'webdataviz'@'localhost';
 
 
 -- ACESSO -----------------------------------------------------
@@ -115,6 +115,13 @@ CREATE TABLE parametro_metrica (
 
 INSERT INTO empresa (razao_social, cnpj, telefone_comercial, cep, numero) VALUES
 ('BioTrace Tecnologia Ltda','12345678000101', '1133334444', '01310100', '1000');
+
+
+INSERT INTO cargo (nome) VALUES
+('BioTrace'),
+('Administrador'),
+('Gestor'),
+('Analista');
 
 INSERT INTO usuario (nome_usuario, dt_nasc_usuario, telefone_usuario, cpf_usuario, email_usuario, senha_usuario, fk_empresa, fk_cargo) VALUES
 -- BioTrace (empresa 1, cargo 1)
