@@ -57,7 +57,10 @@ CREATE TABLE usuario (
 
 CREATE TABLE modelo_equipamento (
     id_modelo_equipamento INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    nome_modelo VARCHAR(60) NOT NULL
+    nome_modelo VARCHAR(60) NOT NULL,
+    fk_empresa INT NOT NULL,
+    CONSTRAINT fk_modelo_empresa FOREIGN KEY (fk_empresa) REFERENCES empresa (id_empresa),
+    CONSTRAINT uk_modelo_empresa_nome UNIQUE (fk_empresa, nome_modelo)
 );
 
 CREATE TABLE lote_equipamento (
@@ -65,6 +68,7 @@ CREATE TABLE lote_equipamento (
     numero_lote VARCHAR(60) NOT NULL,
     fk_empresa INT NOT NULL,
     fk_modelo_equipamento INT NOT NULL,
+    CONSTRAINT uk_lote_empresa_numero UNIQUE (fk_empresa, numero_lote),
     CONSTRAINT fk_lote_empresa FOREIGN KEY (fk_empresa) REFERENCES empresa (id_empresa),
     CONSTRAINT fk_lote_modelo FOREIGN KEY (fk_modelo_equipamento) REFERENCES modelo_equipamento (id_modelo_equipamento)
 );
@@ -72,7 +76,7 @@ CREATE TABLE lote_equipamento (
 CREATE TABLE equipamento (
     id_equipamento INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     numero_serie VARCHAR(60) NOT NULL UNIQUE,
-    fk_hospital INT NOT NULL,
+    fk_hospital INT NULL DEFAULT NULL,
     fk_lote INT NOT NULL,
     CONSTRAINT fk_equipamento_hospital FOREIGN KEY (fk_hospital) REFERENCES hospital (id_hospital),
     CONSTRAINT fk_equipamento_lote FOREIGN KEY (fk_lote) REFERENCES lote_equipamento (id_lote_equipamento)
