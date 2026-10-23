@@ -139,3 +139,24 @@ INSERT INTO usuario (nome_usuario, dt_nasc_usuario, telefone_usuario, cpf_usuari
 ('Jonatas Teles',    '1993-09-14', '11987654325', '56789012345', 'jonatas.teles@biotrace.com',     SHA2('jonatas123', 256),  1, 1),
 ('Miguel Soares',    '1998-05-30', '11987654326', '67890123456', 'miguel.soares@biotrace.com',     SHA2('miguel123', 256),   1, 1);
 
+INSERT INTO tipo_componente (nome_componente) VALUES
+('CPU'),
+('Memória RAM'),
+('Disco'),
+('Rede'),
+('Sistema Operacional');
+
+INSERT INTO tipo_metrica (tipo_metrica, unidade) VALUES
+('cpu_percent', '%'),
+('cpu_por_nucleo', '%'),
+('temperatura_cpu', '°C'),
+('memoria_percent', '%'),
+('memoria_disponivel_gb', 'GB'),
+('disco_percent', '%'),
+('disco_livre_gb', 'GB'),
+('rede_bytes_enviados', 'bytes'),
+('rede_bytes_recebidos', 'bytes'),
+('rede_erros_entrada', 'erros'),
+('rede_erros_saida', 'erros'),
+('uptime_horas', 'horas'),
+('processos_ativos', 'processos');
