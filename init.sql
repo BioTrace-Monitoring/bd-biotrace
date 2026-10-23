@@ -29,9 +29,12 @@ CREATE TABLE empresa (
 CREATE TABLE hospital (
     id_hospital INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     nome_hospital VARCHAR(100) NOT NULL,
-    cnpj CHAR(14) NOT NULL UNIQUE,
+    cnpj CHAR(14) NOT NULL,
     cep CHAR(8),
-    numero VARCHAR(10)
+    numero VARCHAR(10),
+    fk_empresa INT NOT NULL,
+    CONSTRAINT fk_hospital_empresa FOREIGN KEY (fk_empresa) REFERENCES empresa (id_empresa),
+    CONSTRAINT uk_hospital_empresa_cnpj UNIQUE (fk_empresa, cnpj)
 );
 
 -- USUÁRIOS -------------------------------------------------------
@@ -131,3 +134,4 @@ INSERT INTO usuario (nome_usuario, dt_nasc_usuario, telefone_usuario, cpf_usuari
 ('Pedro Ludovic',    '1997-02-19', '11987654324', '45678901234', 'pedro.ludovic@biotrace.com',     SHA2('pedro123', 256),    1, 1),
 ('Jonatas Teles',    '1993-09-14', '11987654325', '56789012345', 'jonatas.teles@biotrace.com',     SHA2('jonatas123', 256),  1, 1),
 ('Miguel Soares',    '1998-05-30', '11987654326', '67890123456', 'miguel.soares@biotrace.com',     SHA2('miguel123', 256),   1, 1);
+
