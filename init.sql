@@ -1,10 +1,10 @@
-CREATE DATABASE IF NOT EXISTS biotrace;
+CREATE DATABASE IF NOT EXISTS biotrace
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 USE biotrace;
 
-CREATE USER 'webdataviz'@'localhost' IDENTIFIED BY 'web123';
-
-
-GRANT SELECT, INSERT, DELETE, UPDATE ON biotrace.* TO 'webdataviz'@'localhost';
+CREATE USER 'webdataviz'@'%' IDENTIFIED BY 'web123';
+GRANT SELECT, INSERT, DELETE, UPDATE ON biotrace.* TO 'webdataviz'@'%';
 
 
 -- ACESSO -----------------------------------------------------
@@ -120,6 +120,32 @@ CREATE TABLE parametro_metrica (
     CONSTRAINT fk_parametro_metrica FOREIGN KEY (fk_metrica) REFERENCES metrica (id_metrica)
 );
 
+CREATE TABLE alerta (
+    id_alerta BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    fk_metrica INT NOT NULL,
+
+    tipo_alerta ENUM('USO', 'OCIOSIDADE') NOT NULL,
+
+    confirmado_em DATETIME(6) NOT NULL,
+    ultima_violacao_em DATETIME(6) NOT NULL,
+    encerrado_em DATETIME(6),
+
+    motivo_encerramento ENUM(
+        'NORMALIZACAO',
+        'MUDANCA_CONDICAO'
+    ),
+
+    limite_aplicado DECIMAL(5,2) NOT NULL,
+    valor_confirmacao DOUBLE NOT NULL,
+
+    CONSTRAINT fk_alerta_metrica
+        FOREIGN KEY (fk_metrica)
+        REFERENCES metrica (id_metrica),
+
+    CONSTRAINT uk_alerta_confirmacao
+        UNIQUE (fk_metrica, tipo_alerta, confirmado_em)
+);
+
 INSERT INTO empresa (razao_social, cnpj, telefone_comercial, cep, numero) VALUES
 ('BioTrace Tecnologia Ltda','12345678000101', '1133334444', '01310100', '1000');
 
@@ -160,3 +186,126 @@ INSERT INTO tipo_metrica (tipo_metrica, unidade) VALUES
 ('rede_erros_saida', 'erros'),
 ('uptime_horas', 'horas'),
 ('processos_ativos', 'processos');
+
+-- EMPRESA DE DEMONSTRAÇÃO E ADMINISTRADOR -------------------------
+
+INSERT INTO empresa (razao_social, cnpj, telefone_comercial, cep, numero)
+VALUES ('Hospitalar Exemplo Ltda', '11222333000181', '1133339999', '01310930', '150');
+
+INSERT INTO usuario (
+    nome_usuario,
+    dt_nasc_usuario,
+    telefone_usuario,
+    cpf_usuario,
+    email_usuario,
+    senha_usuario,
+    fk_empresa,
+    fk_cargo
+)
+SELECT
+    'Administrador Demo',
+    '1990-01-15',
+    '11999990000',
+    '98765432100',
+    'admin@hospitalar-exemplo.com',
+    SHA2('admin123', 256),
+    e.id_empresa,
+    c.id_cargo
+FROM empresa e
+CROSS JOIN cargo c
+WHERE e.cnpj = '11222333000181'
+  AND c.nome = 'Administrador';
+
+INSERT INTO modelo_equipamento (nome_modelo, fk_empresa)
+SELECT 'Monitor Hospitalar Demo', e.id_empresa
+FROM empresa e
+WHERE e.cnpj = '11222333000181';
+
+INSERT INTO lote_equipamento (numero_lote, fk_empresa, fk_modelo_equipamento)
+SELECT 'LT-DEMO-001', e.id_empresa, m.id_modelo_equipamento
+FROM empresa e
+JOIN modelo_equipamento m
+    ON m.fk_empresa = e.id_empresa
+WHERE e.cnpj = '11222333000181'
+  AND m.nome_modelo = 'Monitor Hospitalar Demo';
+
+INSERT INTO equipamento (numero_serie, fk_hospital, fk_lote)
+SELECT 'BT-DEMO-0001', NULL, l.id_lote_equipamento
+FROM lote_equipamento l
+JOIN empresa e ON e.id_empresa = l.fk_empresa
+WHERE e.cnpj = '11222333000181'
+  AND l.numero_lote = 'LT-DEMO-001';
+
+-- COMPONENTES DO EQUIPAMENTO DE DEMONSTRAÇÃO -----------------------
+
+INSERT INTO componente (fk_equipamento, fk_tipo_componente)
+SELECT e.id_equipamento, tc.id_tipo_componente
+FROM equipamento e
+JOIN lote_equipamento l ON l.id_lote_equipamento = e.fk_lote
+JOIN empresa emp ON emp.id_empresa = l.fk_empresa
+CROSS JOIN tipo_componente tc
+WHERE e.numero_serie = 'BT-DEMO-0001'
+  AND emp.cnpj = '11222333000181'
+  AND tc.nome_componente IN (
+      'CPU', 'Memória RAM', 'Disco', 'Rede', 'Sistema Operacional'
+  );
+
+-- MÉTRICAS DO EQUIPAMENTO DE DEMONSTRAÇÃO ---------------------------
+
+INSERT INTO metrica (fk_tipo_metrica, fk_componente)
+SELECT tm.id_tipo_metrica, c.id_componente
+FROM componente c
+JOIN tipo_componente tc ON tc.id_tipo_componente = c.fk_tipo_componente
+JOIN equipamento e ON e.id_equipamento = c.fk_equipamento
+JOIN lote_equipamento l ON l.id_lote_equipamento = e.fk_lote
+JOIN empresa emp ON emp.id_empresa = l.fk_empresa
+CROSS JOIN tipo_metrica tm
+WHERE e.numero_serie = 'BT-DEMO-0001'
+  AND emp.cnpj = '11222333000181'
+  AND (
+      (tc.nome_componente = 'CPU'
+          AND tm.tipo_metrica IN ('cpu_percent', 'cpu_por_nucleo', 'temperatura_cpu'))
+      OR (tc.nome_componente = 'Memória RAM'
+          AND tm.tipo_metrica IN ('memoria_percent', 'memoria_disponivel_gb'))
+      OR (tc.nome_componente = 'Disco'
+          AND tm.tipo_metrica IN ('disco_percent', 'disco_livre_gb'))
+      OR (tc.nome_componente = 'Rede'
+          AND tm.tipo_metrica IN (
+              'rede_bytes_enviados', 'rede_bytes_recebidos',
+              'rede_erros_entrada', 'rede_erros_saida'
+          ))
+      OR (tc.nome_componente = 'Sistema Operacional'
+          AND tm.tipo_metrica IN ('uptime_horas', 'processos_ativos'))
+  );
+
+-- PARÂMETROS PADRÃO DAS MÉTRICAS DO EQUIPAMENTO --------------------
+
+INSERT INTO parametro_metrica (
+    limite_uso,
+    limite_ociosidade,
+    habilitado,
+    fk_metrica
+)
+SELECT
+    CASE tm.tipo_metrica
+        WHEN 'cpu_percent' THEN 90.00
+        WHEN 'memoria_percent' THEN 90.00
+        WHEN 'disco_percent' THEN 90.00
+        ELSE NULL
+    END,
+    CASE tm.tipo_metrica
+        WHEN 'cpu_percent' THEN 5.00
+        WHEN 'memoria_percent' THEN 10.00
+        WHEN 'disco_percent' THEN 10.00
+        ELSE NULL
+    END,
+    TRUE,
+    m.id_metrica
+FROM metrica m
+JOIN tipo_metrica tm ON tm.id_tipo_metrica = m.fk_tipo_metrica
+JOIN componente c ON c.id_componente = m.fk_componente
+JOIN equipamento e ON e.id_equipamento = c.fk_equipamento
+JOIN lote_equipamento l ON l.id_lote_equipamento = e.fk_lote
+JOIN empresa emp ON emp.id_empresa = l.fk_empresa
+WHERE e.numero_serie = 'BT-DEMO-0001'
+  AND emp.cnpj = '11222333000181';
