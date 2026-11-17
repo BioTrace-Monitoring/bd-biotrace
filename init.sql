@@ -3,9 +3,9 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 USE biotrace;
 
-CREATE USER 'webdataviz'@'%' IDENTIFIED BY 'web123';
+CREATE USER IF NOT EXISTS 'webdataviz'@'%' IDENTIFIED BY 'web123';
 GRANT SELECT, INSERT, DELETE, UPDATE ON biotrace.* TO 'webdataviz'@'%';
-
+FLUSH PRIVILEGES;
 
 -- ACESSO -----------------------------------------------------
 
@@ -123,28 +123,65 @@ CREATE TABLE parametro_metrica (
 CREATE TABLE alerta (
     id_alerta BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     fk_metrica INT NOT NULL,
-
     tipo_alerta ENUM('USO', 'OCIOSIDADE') NOT NULL,
-
     confirmado_em DATETIME(6) NOT NULL,
     ultima_violacao_em DATETIME(6) NOT NULL,
     encerrado_em DATETIME(6),
-
     motivo_encerramento ENUM(
         'NORMALIZACAO',
         'MUDANCA_CONDICAO'
     ),
-
     limite_aplicado DECIMAL(5,2) NOT NULL,
     valor_confirmacao DOUBLE NOT NULL,
-
     CONSTRAINT fk_alerta_metrica
         FOREIGN KEY (fk_metrica)
         REFERENCES metrica (id_metrica),
-
     CONSTRAINT uk_alerta_confirmacao
         UNIQUE (fk_metrica, tipo_alerta, confirmado_em)
 );
+
+-- ANÁLISE E ALERTAS DE LOTE (MÓDULO PEDRO) -------------------------
+
+CREATE TABLE configuracao_alerta_lote (
+    id_configuracao INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    fk_lote INT NOT NULL UNIQUE,
+    limite_integridade DECIMAL(5,2) NOT NULL DEFAULT 80.00,
+    email_ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    slack_ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    destinatario_email VARCHAR(100) NOT NULL DEFAULT 'ana.souza@empresa.com',
+    estado_atual ENUM('normal', 'alerta') NOT NULL DEFAULT 'normal',
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_config_alerta_lote FOREIGN KEY (fk_lote) REFERENCES lote_equipamento (id_lote_equipamento)
+);
+
+CREATE TABLE resumo_integridade_lote (
+    id_resumo BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    fk_lote INT NOT NULL,
+    integridade_geral DECIMAL(5,2) NOT NULL,
+    total_equipamentos INT NOT NULL,
+    qtd_sem_alerta INT NOT NULL DEFAULT 0,
+    qtd_em_atencao INT NOT NULL DEFAULT 0,
+    qtd_limite_excedido INT NOT NULL DEFAULT 0,
+    qtd_falha_leitura INT NOT NULL DEFAULT 0,
+    qtd_abaixo_minimo INT NOT NULL DEFAULT 0,
+    equipamentos_ociosos INT NOT NULL DEFAULT 0,
+    referencia_gold VARCHAR(1024),
+    processado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_resumo_lote FOREIGN KEY (fk_lote) REFERENCES lote_equipamento (id_lote_equipamento)
+);
+
+CREATE TABLE historico_notificacao_lote (
+    id_notificacao BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    fk_lote INT NOT NULL,
+    canal VARCHAR(50) NOT NULL,
+    tipo_evento ENUM('ALERTA ABERTO', 'RESOLVIDO') NOT NULL,
+    mensagem VARCHAR(255) NOT NULL,
+    integridade_momento DECIMAL(5,2) NOT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_hist_notif_lote FOREIGN KEY (fk_lote) REFERENCES lote_equipamento (id_lote_equipamento)
+);
+
+-- ENSAIOS E HOMOLOGAÇÃO --------------------------------------------
 
 CREATE TABLE protocolo_ensaio (
     id_protocolo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -244,10 +281,10 @@ CREATE TABLE acao_correcao (
     FOREIGN KEY (fk_ensaio_reteste) REFERENCES ensaio (id_ensaio)
 );
 
+-- DADOS INICIAIS ---------------------------------------------------
 
 INSERT INTO empresa (razao_social, cnpj, telefone_comercial, cep, numero) VALUES
 ('BioTrace Tecnologia Ltda','12345678000101', '1133334444', '01310100', '1000');
-
 
 INSERT INTO cargo (nome) VALUES
 ('BioTrace'),
@@ -256,13 +293,12 @@ INSERT INTO cargo (nome) VALUES
 ('Analista');
 
 INSERT INTO usuario (nome_usuario, dt_nasc_usuario, telefone_usuario, cpf_usuario, email_usuario, senha_usuario, fk_empresa, fk_cargo) VALUES
--- BioTrace (empresa 1, cargo 1)
-('Ana Clara',        '1995-03-12', '11987654321', '12345678901', 'ana.clara@biotrace.com',         SHA2('ana123', 256),      1, 1),
-('Bruno Rafael',     '1996-07-25', '11987654322', '23456789012', 'bruno.rafael@biotrace.com',      SHA2('bruno123', 256),    1, 1),
-('Eduardo Lupianez', '1994-11-08', '11987654323', '34567890123', 'eduardo.lupianez@biotrace.com',  SHA2('eduardo123', 256),  1, 1),
-('Pedro Ludovic',    '1997-02-19', '11987654324', '45678901234', 'pedro.ludovic@biotrace.com',     SHA2('pedro123', 256),    1, 1),
-('Jonatas Teles',    '1993-09-14', '11987654325', '56789012345', 'jonatas.teles@biotrace.com',     SHA2('jonatas123', 256),  1, 1),
-('Miguel Soares',    '1998-05-30', '11987654326', '67890123456', 'miguel.soares@biotrace.com',     SHA2('miguel123', 256),   1, 1);
+('Ana Clara',        '1995-03-12', '11987654321', '12345678901', 'ana.clara@biotrace.com',        SHA2('ana123', 256),     1, 1),
+('Bruno Rafael',     '1996-07-25', '11987654322', '23456789012', 'bruno.rafael@biotrace.com',     SHA2('bruno123', 256),   1, 1),
+('Eduardo Lupianez', '1994-11-08', '11987654323', '34567890123', 'eduardo.lupianez@biotrace.com', SHA2('eduardo123', 256), 1, 1),
+('Pedro Ludovic',    '1997-02-19', '11987654324', '45678901234', 'pedro.ludovic@biotrace.com',    SHA2('pedro123', 256),   1, 1),
+('Jonatas Teles',    '1993-09-14', '11987654325', '56789012345', 'jonatas.teles@biotrace.com',    SHA2('jonatas123', 256), 1, 1),
+('Miguel Soares',    '1998-05-30', '11987654326', '67890123456', 'miguel.soares@biotrace.com',    SHA2('miguel123', 256),  1, 1);
 
 INSERT INTO tipo_componente (nome_componente) VALUES
 ('CPU'),
@@ -327,6 +363,12 @@ JOIN modelo_equipamento m
     ON m.fk_empresa = e.id_empresa
 WHERE e.cnpj = '11222333000181'
   AND m.nome_modelo = 'Monitor Hospitalar Demo';
+
+-- Configuração inicial de alerta para o lote LT-DEMO-001
+INSERT INTO configuracao_alerta_lote (fk_lote, limite_integridade, email_ativo, slack_ativo, destinatario_email)
+SELECT id_lote_equipamento, 80.00, TRUE, TRUE, 'admin@hospitalar-exemplo.com'
+FROM lote_equipamento
+WHERE numero_lote = 'LT-DEMO-001';
 
 INSERT INTO equipamento (numero_serie, fk_hospital, fk_lote)
 SELECT 'BT-DEMO-0001', NULL, l.id_lote_equipamento
