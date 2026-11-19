@@ -181,6 +181,22 @@ CREATE TABLE historico_notificacao_lote (
     CONSTRAINT fk_hist_notif_lote FOREIGN KEY (fk_lote) REFERENCES lote_equipamento (id_lote_equipamento)
 );
 
+CREATE TABLE perfil_uso_equipamento_lote (
+    id_perfil BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    fk_lote INT NOT NULL,
+    numero_serie VARCHAR(60) NOT NULL,
+    percentual_ociosidade DECIMAL(5,2) NOT NULL,
+    variacao_picos DECIMAL(5,2) NOT NULL,
+    perfil_uso VARCHAR(30) NOT NULL,
+    status_operacional VARCHAR(30) NOT NULL,
+    categoria_alerta VARCHAR(30) NOT NULL DEFAULT 'normal',
+    processado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_perfil_lote_serie UNIQUE (fk_lote, numero_serie),
+    CONSTRAINT fk_perfil_lote FOREIGN KEY (fk_lote) REFERENCES lote_equipamento (id_lote_equipamento),
+    CONSTRAINT chk_perfil_uso CHECK (perfil_uso IN ('Quase sem uso', 'Uso em picos', 'Uso constante')),
+    CONSTRAINT chk_status_operacional CHECK (status_operacional IN ('Subutilizado', 'Em funcionamento')),
+    CONSTRAINT chk_categoria_alerta CHECK (categoria_alerta IN ('normal', 'atencao', 'limite', 'falha', 'abaixo'))
+);
 -- DADOS INICIAIS ---------------------------------------------------
 
 INSERT INTO empresa (razao_social, cnpj, telefone_comercial, cep, numero) VALUES
